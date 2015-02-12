@@ -1,7 +1,0 @@
-set(_CATKIN_CURRENT_PACKAGE "pluginlib_tutorials_")
-set(pluginlib_tutorials__MAINTAINER "ash-rob-15 <ash-rob-15@todo.todo>")
-set(pluginlib_tutorials__DEPRECATED "")
-set(pluginlib_tutorials__VERSION "0.0.0")
-set(pluginlib_tutorials__BUILD_DEPENDS "pluginlib" "roscpp")
-set(pluginlib_tutorials__RUN_DEPENDS "pluginlib" "roscpp")
-set(pluginlib_tutorials__BUILDTOOL_DEPENDS "catkin")

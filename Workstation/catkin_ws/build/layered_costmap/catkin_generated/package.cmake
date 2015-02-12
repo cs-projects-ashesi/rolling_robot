@@ -1,7 +1,0 @@
-set(_CATKIN_CURRENT_PACKAGE "layered_costmap")
-set(layered_costmap_MAINTAINER "ash-rob-15 <ash-rob-15@todo.todo>")
-set(layered_costmap_DEPRECATED "")
-set(layered_costmap_VERSION "0.0.0")
-set(layered_costmap_BUILD_DEPENDS "roscpp" "rospy" "std_msgs")
-set(layered_costmap_RUN_DEPENDS "roscpp" "rospy" "std_msgs")
-set(layered_costmap_BUILDTOOL_DEPENDS "catkin")

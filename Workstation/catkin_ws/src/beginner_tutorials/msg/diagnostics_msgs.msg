@@ -1,1 +1,0 @@
-DiagnosticArray dArray

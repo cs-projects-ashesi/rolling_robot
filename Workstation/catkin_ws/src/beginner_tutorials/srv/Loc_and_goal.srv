@@ -1,6 +1,0 @@
-string yaml_to_load
-string spiel_to_play
----
-string map_name
-string load_status
-string play_status
