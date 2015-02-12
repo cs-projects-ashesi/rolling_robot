@@ -1,0 +1,409 @@
+#include "ros/ros.h"
+#include "beginner_tutorials/Loc_and_goal.h"
+#include <cstdlib>
+#include <algorithm>
+#include <sstream>
+#include <typeinfo>
+
+//Include statements for rapid-XML
+#include</home/ash-rob-15/Desktop/rapidxml-1.13/rapidxml.hpp>
+
+//include statements for localization 
+#include "std_msgs/Header.h"
+#include "geometry_msgs/PoseWithCovarianceStamped.h"
+#include "geometry_msgs/PoseWithCovariance.h"
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <stdlib.h>
+#include <dirent.h>
+#include<vector>
+
+//include statement for goal location
+#include "geometry_msgs/PoseStamped.h"
+
+//include statements for listening for overlap
+#include "std_msgs/String.h"
+#include <tf/transform_listener.h>
+
+using namespace std;
+using namespace rapidxml;
+
+//These three structures represent the objects read from the XML.
+struct InterestPoint
+{
+	string id;
+	string name;
+	string x;
+	string y;
+	string spiel;
+};
+struct Overlap
+{
+	string id;
+	string exit_region;
+	string next_map;
+	string x;
+	string y;
+	string z;
+	string w;
+};
+struct Map
+{
+	string yaml_file;
+	vector<InterestPoint> interest_points;
+	vector<Overlap> overlaps;
+}; 
+
+Map currMap = Map();
+InterestPoint point;
+Overlap overlap; 
+//End
+
+
+//Miscellaneous declarations
+string response;
+string maps_dir = "/home/ash-rob-15/Desktop/maps/";
+//End
+
+//Method that traverses the xml and returns a map struct with corresponding info
+Map traverse_xml(const string& input_xml)
+{
+	Map this_map = Map();
+	vector<char> xml_copy(input_xml.begin(), input_xml.end());
+	xml_copy.push_back('\0');
+
+	xml_document<> doc;
+	doc.parse<parse_declaration_node | parse_no_data_nodes>(&xml_copy[0]);
+
+	xml_node<>* map = doc.first_node("map");
+	xml_node<>* file_location = map->first_node("file_location");
+	
+	//Add to map struct and print
+	this_map.yaml_file = file_location->first_attribute("location")->value();
+	cout<<"File location: "<<file_location->first_attribute("location")->value()<<endl;
+
+	xml_node<>* interest_point = map->first_node("interest_point");
+	cout<<"Interest points"<<endl;
+	while(interest_point != NULL)
+	{
+		cout<<interest_point->first_attribute("id")->value()<<endl;
+		cout<<interest_point->first_attribute("name")->value()<<endl;
+		cout<<interest_point->first_attribute("x")->value()<<endl;
+		cout<<interest_point->first_attribute("y")->value()<<endl;
+		//cout<<interest_point->first_attribute("spiel")->value()<<endl;
+
+		//Add to interest point strucutre and add to map
+		point = InterestPoint();
+		point.id = interest_point->first_attribute("id")->value();
+		point.name = interest_point->first_attribute("name")->value();
+		point.x = interest_point->first_attribute("x")->value();
+		point.y = interest_point->first_attribute("y")->value();
+		//point.spiel = interest_point->first_attribute("spiel")->value();
+		this_map.interest_points.push_back(point);
+
+		interest_point = interest_point->next_sibling("interest_point");
+	}
+
+	xml_node<>* an_overlap = map->first_node("overlap");
+	while(an_overlap != NULL)
+	{
+		cout<<an_overlap->first_attribute("id")->value()<<endl;
+		cout<<an_overlap->first_attribute("exit_region")->value()<<endl;
+		cout<<an_overlap->first_attribute("next_map")->value()<<endl;
+		cout<<an_overlap->first_attribute("x")->value()<<endl;
+		cout<<an_overlap->first_attribute("y")->value()<<endl;
+
+		//Add to interest point strucutre and add to map
+		overlap = Overlap();
+		overlap.id = an_overlap->first_attribute("id")->value();
+		overlap.exit_region = an_overlap->first_attribute("exit_region")->value();
+		overlap.next_map = an_overlap->first_attribute("next_map")->value();
+		overlap.x = an_overlap->first_attribute("x")->value();
+		overlap.y = an_overlap->first_attribute("y")->value();
+		this_map.overlaps.push_back(overlap);
+
+		an_overlap = an_overlap->next_sibling("overlap");
+	}
+	return this_map;
+}
+//End
+
+
+//Method to localize
+void localize(const double& posX, const double& posY, const double& posZ,  const double& orientX, const double& orientY, 
+		    const double& orientZ, const double& orientW)
+{
+	ros::NodeHandle l;
+	ros::Publisher inital_pose =  l.advertise<geometry_msgs::PoseWithCovarianceStamped>("initialpose/", 5);
+	ros::Rate l_rate(1);
+	
+	int loc_count = 0;
+	while(ros::ok() && loc_count<5)
+	{
+		cout<<"publishing initial pose"<< "\n";
+		geometry_msgs::PoseWithCovarianceStamped Initial;
+		geometry_msgs::PoseWithCovariance msg;
+		Initial.header.seq = 0;
+		Initial.header.frame_id="map";
+		
+		/*double tempPosX, tempPosY, tempPosZ;
+		tempPosX = atof(posX.c_str());
+		tempPosY = atof(posY.c_str());
+		tempPosZ = atof(posZ.c_str());*/
+		
+		msg.pose.position.x= posX;
+		msg.pose.position.y= posY;
+		msg.pose.position.z= posZ;
+		
+		//Pose orientation
+		msg.pose.orientation.x = orientX;
+		msg.pose.orientation.y = orientY;
+		msg.pose.orientation.z = orientZ;
+		msg.pose.orientation.w = orientW;
+		
+		Initial.pose = msg;
+
+		inital_pose.publish(Initial);
+		ros::spinOnce();
+		l_rate.sleep();
+		loc_count++;
+	}
+}
+//End
+
+//Method to send goal
+void sendGoal(string posX, string posY, string posZ, string orientX, string orientY, 
+		       string orientZ, string orientW)
+{
+	ros::NodeHandle g;
+	ros::Publisher goal_pose =   g.advertise<geometry_msgs::PoseStamped>("move_base_simple/goal", 5);
+
+	ros::Rate g_rate(1);
+	
+	int goal_count = 0;
+	while(ros::ok() && goal_count<3)
+	{
+		geometry_msgs::PoseStamped GoalPose;
+
+		GoalPose.header.frame_id = "/map";
+
+		GoalPose.pose.position.x = atof(posX.c_str());
+		GoalPose.pose.position.y = atof(posY.c_str());
+		GoalPose.pose.position.z = atof(posZ.c_str());
+
+
+		GoalPose.pose.orientation.x = atof(orientX.c_str());
+		GoalPose.pose.orientation.y = atof(orientY.c_str());
+		GoalPose.pose.orientation.z = atof(orientZ.c_str());
+		GoalPose.pose.orientation.w = atof(orientW.c_str());
+
+		cout<<"Publishing goal"<< "\n";
+
+		goal_pose.publish(GoalPose);
+
+		ros::spinOnce();
+		g_rate.sleep();
+		goal_count++;
+      }
+}
+//End
+
+//Method to read XML Folder and populate a list with all XML files
+vector<string> create_XML_list()
+{
+	vector<string> files = vector<string>();
+	DIR *dpdf;
+	struct dirent *epdf;
+	
+	dpdf = opendir("/home/ash-rob-15/Desktop/maps");
+	if(dpdf != NULL)
+	{
+		while(epdf = readdir(dpdf))
+		{
+			if(!strcmp(epdf->d_name,".")) continue;
+			if(!strcmp(epdf->d_name,"..")) continue;
+			//if(epdf->d_name[0] == ".") continue;
+			
+			if(strstr(epdf->d_name, ".xml"))
+			{
+				files.push_back(epdf->d_name);
+				cout<<"adding "<<epdf->d_name<<endl;
+			}
+		}
+	}
+	sort(files.begin(), files.end());
+	cout<<"SORTED MAPS"<<endl;
+	for(int i=0; i<files.size();i++)
+	{
+		cout<<files[i]<<endl;
+	}
+	closedir(dpdf);
+	return files;
+}
+
+void check_overlap()
+{
+	ros::NodeHandle o;
+
+	tf::TransformListener listener;
+	ros::Rate rate(10);
+
+
+	int overlapped=0;
+
+	while (ros::ok() && overlapped==0)
+	{
+		tf::StampedTransform transform;
+		cout<<"Listening for overlap"<< "\n";
+
+		while(overlapped==0)
+		{
+			try
+			{
+				//ROS_INFO("Attempting to read pose...");
+				listener.lookupTransform("/map","/base_link",ros::Time(0), transform);
+
+				//if overlap crossed
+				if(transform.getOrigin().y() < -8 )
+				{
+
+					cout<<"CROSSED !!!"<< "\n";
+				}
+
+			}
+			catch (tf::TransformException ex)
+			{
+				ROS_ERROR("Nope! %s", ex.what());
+			}
+			rate.sleep();
+		}
+	}
+}
+
+
+
+
+
+
+int main(int argc, char **argv)
+{
+	
+	//TO-DO 1: Read through file names in XML folder and populate a list*********************DONE!
+		//		  Go through the list and parse each XML file***********************************DONE!
+		//		  While parsing a particular XML file: 
+		//			i. Send the name of the next yaml file to be loaded
+		//		  	ii. If response is good, localize and set each goal in the XML.
+		//			iii. If exit overlap is reached, load next XML
+	//END
+	
+	
+	//ROS declarations
+	ros::init(argc, argv, "loc_and_go_client");
+
+	ros::NodeHandle n;
+	ros::ServiceClient client = n.serviceClient<beginner_tutorials::Loc_and_goal>("load_next_map");
+	beginner_tutorials::Loc_and_goal srv;
+	//End
+	
+	//Parsing declarations
+	string actual_file;
+	vector<string> xml_file = vector<string>();
+	xml_file = create_XML_list();//create list from xml files in the folder
+	//End
+	
+	
+	string is_A_entrance_overlap;
+	string is_B_entrance_overlap;
+	Overlap entrance_overlap;
+	Overlap exit_overlap;
+	
+	
+	int i = 0;
+	//While the last map has not been reached...
+	while(strcmp(entrance_overlap.next_map.c_str(), "END") != 0)
+	{
+		//Parse current XML File 
+		ostringstream file;
+		file <<maps_dir<<xml_file[i];
+		actual_file = file.str();
+		cout<<actual_file.c_str()<<" about to be parsed..."<<endl;
+		
+		ifstream myfile(actual_file.c_str());
+		vector<char> buffer((istreambuf_iterator<char>(myfile)), istreambuf_iterator<char>());
+		buffer.push_back('\0');
+		currMap = traverse_xml(&buffer[0]);	
+		//End
+		
+		//Determine which of the overlaps is the entrance overlap and which is the exit overlap
+		//If an overlap's exit region is false, it is the entrance region for the current map,
+		//otherwise it's the exit region.
+		is_A_entrance_overlap = currMap.overlaps[0].exit_region;
+		is_B_entrance_overlap = currMap.overlaps[1].exit_region;
+		
+		if(strcmp(is_A_entrance_overlap.c_str(), "false"))
+		{
+			entrance_overlap = currMap.overlaps[0];
+			exit_overlap = currMap.overlaps[1];
+		}
+		else
+		{
+			entrance_overlap = currMap.overlaps[1];
+			exit_overlap = currMap.overlaps[0];
+		}
+		//End
+		
+		
+		
+		//Send the name of the yaml file to be loaded to the server and await response
+		srv.request.yaml_to_load = currMap.yaml_file;
+		cout<<"Sending the next YAML to load: "<<currMap.yaml_file.c_str()<<endl;
+		
+		//--------------------//If response is good, localize and set goal
+		if(client.call(srv))
+		{
+			cout<<"Loaded map name: "<<srv.response.map_name<<endl;
+			cout<<"Map load status: "<<srv.response.load_status<<endl;
+			
+			//----------------------------------//Localize block: Localize at entrance overlap
+			cout<<"About to localize..........................."<<endl;
+			//---------------------------------//Localize with entrance region coordinates
+			double zero_value;
+			
+			localize(entrance_overlap.x, entrance_overlap.y, zero_value, zero_value, zero_value, zero_value, entrance_overlap.w);
+			//localize(0.000000, 0.0000, 0.0000, 0.00000, 0.00000, 0.0000, 0.00000);
+			
+			cout<<"Localized"<<endl;
+			//End
+			
+			//--------------------------------//Set Goal at all interest points and finally, set goal to exit region
+			//--------------------------------loop through all the interest points of the current map and send them as goals
+			for(int k=0;k<currMap.interest_points.size();k++)
+			{
+				cout<<"Sending goal for interest point: "<<k<<": "<<currMap.interest_points[k].name <<endl;
+				sendGoal(currMap.interest_points[k].x, currMap.interest_points[k].y, "0.0", "0.0","0.0",entrance_overlap.z, entrance_overlap.w);
+			}
+			//End
+			
+			//After sending goals, send robot to exit overlap
+			cout<<"Done here, Going to exit overlap...."<<endl;
+			sendGoal(exit_overlap.x, exit_overlap.y, "0.0", "0.0", "0.0", exit_overlap.z, exit_overlap.w);
+			i++;
+			cout<<"Going to next map: "<<i<<endl;
+			//End
+			//break;
+		}
+		else
+		{
+			cout<<"Failed to call service"<<endl;
+			cout<<"MAP NOT LOADED BY ROBOT FOR SOME REASON"<<endl;
+			break;
+		}
+		
+		
+		//--------------------//End
+		
+		//End
+	}
+	return 0;
+}

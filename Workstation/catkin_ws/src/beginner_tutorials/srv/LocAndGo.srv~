@@ -1,0 +1,4 @@
+string map_name
+bool load_status
+---
+string yaml_to_load

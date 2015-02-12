@@ -1,0 +1,8 @@
+prefix=/home/ash-rob-15/catkin_ws/devel
+
+Name: layered_costmap
+Description: Description of layered_costmap
+Version: 0.0.0
+Cflags: 
+Libs: -L/home/ash-rob-15/catkin_ws/devel/lib 
+Requires: 
