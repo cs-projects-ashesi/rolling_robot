@@ -9,8 +9,8 @@
 #include <tf/transform_datatypes.h>
 typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseClient;
 
-//Include statements for rapid-XML
-#include</home/ash-rob-15/Desktop/rapidxml-1.13/rapidxml.hpp>
+//Include statements for rapid-XML library located in the lib folder
+#include<../rapidxml-1.13/rapidxml.hpp>
 
 //include statements for localization 
 #include "std_msgs/Header.h"
@@ -70,8 +70,11 @@ Overlap overlap;
 
 //Miscellaneous declarations
 string response;
-string maps_dir = "/home/ash-rob-15/Desktop/maps/";
-string exit_spiel = "/home/turtlebot/spiel/exit_spiel.mp3";
+//Maps directory 
+string maps_dir = "../Resources/Maps/";
+
+
+string exit_spiel = "../Resources/Spiels/exit_spiel.mp3";
 
 
 
@@ -342,7 +345,7 @@ vector<string> create_XML_list()
 	DIR *dpdf;
 	struct dirent *epdf;
 	
-	dpdf = opendir("/home/ash-rob-15/Desktop/maps");
+	dpdf = opendir(maps_dir);
 	if(dpdf != NULL)
 	{
 		while(epdf = readdir(dpdf))
