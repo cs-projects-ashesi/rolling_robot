@@ -11,6 +11,7 @@ typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseCl
 
 //Include statements for rapid-XML library located in the lib folder
 #include<../rapidxml-1.13/rapidxml.hpp>
+//end
 
 //include statements for localization 
 #include "std_msgs/Header.h"
@@ -22,13 +23,18 @@ typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseCl
 #include <stdlib.h>
 #include <dirent.h>
 #include<vector>
+//end
 
 //include statement for goal location
 #include "geometry_msgs/PoseStamped.h"
+//end
+
 
 //include statements for listening for overlap
 #include "std_msgs/String.h"
 #include <tf/transform_listener.h>
+//end
+
 
 using namespace std;
 using namespace rapidxml;
@@ -73,7 +79,7 @@ string response;
 //Maps directory 
 string maps_dir = "../Resources/Maps/";
 
-
+//Exit spiel directory
 string exit_spiel = "../Resources/Spiels/exit_spiel.mp3";
 
 
@@ -84,14 +90,20 @@ double zero_value = 0.000000000000000000000000000000000000000000000000000000001;
 /*A NOTE ABOUT THE VARIABLE ABOVE*/
 /*
 *	Okay, at this point you might be wondering why there are so many zeros for that variable up there.
-*	If you aren't, you should not be reading this code. Call your caretaker to assist you get back to the windows partition.
+*	If you aren't, you should not be reading this code. Kindly call your someone to assist you get back to the windows partition :).
 *	
-*	Okay Einstein, for some reason ROS complains about an NaN input when an absolute zero such as 0.0 is used.
-*	For this reason, I had to put that 1 at the end of all the zeros. Why this happens, I have no idea!
-*	Please, figure it out if you can. If you cannot, please update the number below and add your full name in parenthesis:
+*	Okay, for some reason ROS complains about an NaN input when an absolute zero such as 0.0 is passed to the localization method.
+*	For this reason, I had to put that 1 at the end of all the zeros. Why this happens, I have no idea, but I'm trying very hard to fix it!
+*	Please, figure it out if you can. If you cannot, please update the number below and add your full name in parenthesis :)
 *
 *	DEFEATED: 1 (Wumpini Hussein)
+*	
 *
+*	UPDATE:
+* 	I found out that C++ will produce an NaN if a float is divided by a zero, say x/0.0, where x can be any number. 
+*	My guess is that while doing localization, ROS at some point divides a certain number by the coordinates. Since 
+*	the zero_value variable is used as a coordinate and was 0.0, that division produced an NaN. Putting the 1 at the end
+* 	therefore fixed the issue.
 */
 //End
 
@@ -452,9 +464,9 @@ int main(int argc, char **argv)
 	//TO-DO 1: Read through file names in XML folder and populate a list*********************DONE!
 		//		  Go through the list and parse each XML file***********************************DONE!
 		//		  While parsing a particular XML file: 
-		//			i. Send the name of the next yaml file to be loaded
-		//		  	ii. If response is good, localize and set each goal in the XML.
-		//			iii. If exit overlap is reached, load next XML
+		//			i. Send the name of the next yaml file to be loaded*********************DONE!
+		//		  	ii. If response is good, localize and set each goal in the XML.*********************DONE!
+		//			iii. If exit overlap is reached, load next XML*********************DONE!
 	//END
 	
 	
@@ -536,6 +548,7 @@ int main(int argc, char **argv)
 			cout<<"About to localize..........................."<<endl;
 			//---------------------------------//Localize with entrance region coordinates
 			
+			//The line of code below produced an NaN because the zero_value variable used to be 0.0.
 			localize(entrance_overlap.x, entrance_overlap.y, zero_value, zero_value, zero_value, entrance_overlap.z, entrance_overlap.w);
 			//localize(0.000000, 0.0000, 0.0000, 0.00000, 0.00000, 0.0000, 0.00000);
 			//localize(1.78861348676, -6.67595915055, 0.0000, 0.00000, 0.00000, -0.64309053071, 0.765790160103);
