@@ -225,7 +225,7 @@ void localize(double posX, double posY, double posZ,  double orientX, double ori
 
 //Method to send goal, wait for goal reached, stop for sometime to play spiel and move on to next
 /*
-* This method requires the following includes:
+* This method requires the following include statements:
 *	i. #include <move_base_msgs/MoveBaseAction.h>
 	ii.#include <actionlib/client/simple_action_client.h>
 	iii.#include <tf/transform_datatypes.h>
